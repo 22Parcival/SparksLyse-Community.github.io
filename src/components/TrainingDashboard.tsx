@@ -150,7 +150,7 @@ export default function TrainingDashboard({ alt = "Training Status" }: TrainingD
     triggerRefresh();
   };
 
-  // Compute SVG sparkline points for loss curve filling the width/height
+  // Compute SVG sparkline points with proper padding to prevent any bottom-left or corner overlap
   const losses = historyData.map(d => Number(d.loss) || 0);
   const minLoss = losses.length > 0 ? Math.min(...losses) : 0;
   const maxLoss = losses.length > 0 ? Math.max(...losses) : 1;
@@ -158,13 +158,16 @@ export default function TrainingDashboard({ alt = "Training Status" }: TrainingD
 
   const width = 1000;
   const height = 280;
-  const padding = 0;
+  const paddingX = 30;
+  const paddingY = 30;
 
   const points = losses.map((loss, i) => {
-    const x = padding + (i / (losses.length > 1 ? losses.length - 1 : 1)) * (width - 2 * padding);
-    const y = height - padding - ((loss - minLoss) / lossRange) * (height - 2 * padding);
+    const x = paddingX + (i / (losses.length > 1 ? losses.length - 1 : 1)) * (width - 2 * paddingX);
+    const y = height - paddingY - ((loss - minLoss) / lossRange) * (height - 2 * paddingY);
     return `${x},${y}`;
   }).join(" ");
+
+  const polygonPoints = losses.length > 0 ? `${paddingX},${height - paddingY} ${points} ${width - paddingX},${height - paddingY}` : "";
 
   return (
     <div 
@@ -283,14 +286,14 @@ export default function TrainingDashboard({ alt = "Training Status" }: TrainingD
             <span className="text-[10px] text-white/40">{historyData.length} points enregistrés</span>
           </div>
           
-          <div className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-white/2.5 backdrop-blur-sm pt-8 pb-4 px-0 flex flex-col items-center justify-center min-h-[280px]">
+          <div className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-white/2.5 backdrop-blur-sm p-6 flex flex-col items-center justify-center min-h-[300px]">
             {apiLoading && losses.length === 0 ? (
-              <div className="flex flex-col items-center text-center gap-4 py-12">
+              <div className="flex flex-col items-center text-center gap-4 py-16">
                 <RefreshCw className="w-6 h-6 text-white/40 animate-spin" />
                 <p className="text-xs text-white/40">Chargement des données depuis l'API...</p>
               </div>
             ) : dataError || losses.length === 0 ? (
-              <div className="flex flex-col items-center text-center gap-4 py-12 px-4 max-w-md">
+              <div className="flex flex-col items-center text-center gap-4 py-16 px-4 max-w-md">
                 <AlertCircle className="w-8 h-8 text-amber-400/80" />
                 <div>
                   <p className="text-sm font-medium text-white mb-1">Impossible de charger les données depuis l'API</p>
@@ -302,15 +305,15 @@ export default function TrainingDashboard({ alt = "Training Status" }: TrainingD
             ) : (
               <div className="w-full flex flex-col items-center">
                 <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full h-64 overflow-visible">
-                  {/* Grid lines */}
-                  <line x1={0} y1={0} x2={width} y2={0} stroke="rgba(255,255,255,0.05)" strokeDasharray="4 4" />
-                  <line x1={0} y1={height / 2} x2={width} y2={height / 2} stroke="rgba(255,255,255,0.05)" strokeDasharray="4 4" />
-                  <line x1={0} y1={height} x2={width} y2={height} stroke="rgba(255,255,255,0.1)" />
+                  {/* Clean readable grid lines */}
+                  <line x1={paddingX} y1={paddingY} x2={width - paddingX} y2={paddingY} stroke="rgba(255,255,255,0.08)" strokeDasharray="4 4" />
+                  <line x1={paddingX} y1={height / 2} x2={width - paddingX} y2={height / 2} stroke="rgba(255,255,255,0.08)" strokeDasharray="4 4" />
+                  <line x1={paddingX} y1={height - paddingY} x2={width - paddingX} y2={height - paddingY} stroke="rgba(255,255,255,0.15)" />
 
                   {/* Gradient fill under curve */}
                   <defs>
                     <linearGradient id="lossGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="rgba(255, 255, 255, 0.15)" />
+                      <stop offset="0%" stopColor="rgba(255, 255, 255, 0.2)" />
                       <stop offset="100%" stopColor="rgba(255, 255, 255, 0)" />
                     </linearGradient>
                   </defs>
@@ -318,13 +321,13 @@ export default function TrainingDashboard({ alt = "Training Status" }: TrainingD
                   {losses.length > 1 && (
                     <>
                       <polygon 
-                        points={`0,${height} ${points} ${width},${height}`} 
+                        points={polygonPoints} 
                         fill="url(#lossGradient)" 
                       />
                       <polyline
                         fill="none"
                         stroke="#ffffff"
-                        strokeWidth="2"
+                        strokeWidth="2.5"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         points={points}
@@ -332,10 +335,10 @@ export default function TrainingDashboard({ alt = "Training Status" }: TrainingD
                     </>
                   )}
                 </svg>
-                <div className="w-full flex items-center justify-between text-[10px] text-white/40 mt-4 px-6">
-                  <span>Min Loss: {minLoss.toFixed(4)}</span>
-                  <span>Dernière valeur: {losses[losses.length - 1]?.toFixed(4) || "—"}</span>
-                  <span>Max Loss: {maxLoss.toFixed(4)}</span>
+                <div className="w-full flex items-center justify-between text-[11px] text-white/50 mt-6 px-2 font-mono">
+                  <span>Min: {minLoss.toFixed(4)}</span>
+                  <span className="text-white/80 font-medium">Actuel: {losses[losses.length - 1]?.toFixed(4) || "—"}</span>
+                  <span>Max: {maxLoss.toFixed(4)}</span>
                 </div>
               </div>
             )}
