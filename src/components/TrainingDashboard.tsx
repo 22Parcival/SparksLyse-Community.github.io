@@ -150,16 +150,17 @@ export default function TrainingDashboard({ alt = "Training Status" }: TrainingD
     triggerRefresh();
   };
 
-  // Compute SVG sparkline points with proper padding to prevent any bottom-left or corner overlap
-  const losses = historyData.map(d => Number(d.loss) || 0);
+  // Zoom in on the last 50 points of history for a clean, readable, non-spiky trend view
+  const allLosses = historyData.map(d => Number(d.loss) || 0);
+  const losses = allLosses.slice(-50);
   const minLoss = losses.length > 0 ? Math.min(...losses) : 0;
   const maxLoss = losses.length > 0 ? Math.max(...losses) : 1;
-  const lossRange = maxLoss - minLoss || 1;
+  const lossRange = maxLoss - minLoss || 0.001;
 
   const width = 1000;
-  const height = 280;
-  const paddingX = 30;
-  const paddingY = 30;
+  const height = 320;
+  const paddingX = 40;
+  const paddingY = 40;
 
   const points = losses.map((loss, i) => {
     const x = paddingX + (i / (losses.length > 1 ? losses.length - 1 : 1)) * (width - 2 * paddingX);
@@ -282,18 +283,28 @@ export default function TrainingDashboard({ alt = "Training Status" }: TrainingD
         {/* Live Loss Curve Chart */}
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between px-2">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-white/45 font-medium">Évolution de la Perte (Loss) — Données API</span>
-            <span className="text-[10px] text-white/40">{historyData.length} points enregistrés</span>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-white/45 font-medium">Évolution de la Perte (Loss) — Vue Récente (50 derniers points)</span>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] text-white/40">{historyData.length} points totaux</span>
+              <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[9px] uppercase tracking-widest text-white/60">
+                Live Feed • {new Date(timestamp).toLocaleTimeString()}
+              </div>
+              {isRefreshing && (
+                <div className="px-3 py-1 rounded-full bg-white text-black text-[9px] uppercase tracking-widest font-bold">
+                  Sync
+                </div>
+              )}
+            </div>
           </div>
           
-          <div className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-white/2.5 backdrop-blur-sm p-6 flex flex-col items-center justify-center min-h-[300px]">
+          <div className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-white/2.5 backdrop-blur-sm p-6 flex flex-col items-center justify-center min-h-[360px]">
             {apiLoading && losses.length === 0 ? (
-              <div className="flex flex-col items-center text-center gap-4 py-16">
+              <div className="flex flex-col items-center text-center gap-4 py-20">
                 <RefreshCw className="w-6 h-6 text-white/40 animate-spin" />
                 <p className="text-xs text-white/40">Chargement des données depuis l'API...</p>
               </div>
             ) : dataError || losses.length === 0 ? (
-              <div className="flex flex-col items-center text-center gap-4 py-16 px-4 max-w-md">
+              <div className="flex flex-col items-center text-center gap-4 py-20 px-4 max-w-md">
                 <AlertCircle className="w-8 h-8 text-amber-400/80" />
                 <div>
                   <p className="text-sm font-medium text-white mb-1">Impossible de charger les données depuis l'API</p>
@@ -304,7 +315,7 @@ export default function TrainingDashboard({ alt = "Training Status" }: TrainingD
               </div>
             ) : (
               <div className="w-full flex flex-col items-center">
-                <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full h-64 overflow-visible">
+                <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full h-72 overflow-visible">
                   {/* Clean readable grid lines */}
                   <line x1={paddingX} y1={paddingY} x2={width - paddingX} y2={paddingY} stroke="rgba(255,255,255,0.08)" strokeDasharray="4 4" />
                   <line x1={paddingX} y1={height / 2} x2={width - paddingX} y2={height / 2} stroke="rgba(255,255,255,0.08)" strokeDasharray="4 4" />
@@ -313,7 +324,7 @@ export default function TrainingDashboard({ alt = "Training Status" }: TrainingD
                   {/* Gradient fill under curve */}
                   <defs>
                     <linearGradient id="lossGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="rgba(255, 255, 255, 0.2)" />
+                      <stop offset="0%" stopColor="rgba(255, 255, 255, 0.25)" />
                       <stop offset="100%" stopColor="rgba(255, 255, 255, 0)" />
                     </linearGradient>
                   </defs>
@@ -336,24 +347,12 @@ export default function TrainingDashboard({ alt = "Training Status" }: TrainingD
                   )}
                 </svg>
                 <div className="w-full flex items-center justify-between text-[11px] text-white/50 mt-6 px-2 font-mono">
-                  <span>Min: {minLoss.toFixed(4)}</span>
+                  <span>Min (récent): {minLoss.toFixed(4)}</span>
                   <span className="text-white/80 font-medium">Actuel: {losses[losses.length - 1]?.toFixed(4) || "—"}</span>
-                  <span>Max: {maxLoss.toFixed(4)}</span>
+                  <span>Max (récent): {maxLoss.toFixed(4)}</span>
                 </div>
               </div>
             )}
-            
-            {/* Overlay info */}
-            <div className="absolute bottom-4 left-6 right-6 flex items-center justify-between pointer-events-none">
-              <div className="px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-[9px] uppercase tracking-widest text-white/60">
-                API Live Feed • {new Date(timestamp).toLocaleTimeString()}
-              </div>
-              {isRefreshing && (
-                <div className="px-3 py-1.5 rounded-full bg-white text-black text-[9px] uppercase tracking-widest font-bold">
-                  Synchronisation
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>
