@@ -22,7 +22,7 @@ const ogName =
         .replaceAll("/", "-")
         .replace(/[^a-zA-Z0-9-_]/g, "-");
 
-const ogImage = `${siteUrl}/og/${ogName}.png`;
+const ogImage = `${siteUrl.origin}/og/${ogName}.png`;
 
 import "../styles/global.css";
 import "../styles/fonts.css";
@@ -179,10 +179,27 @@ import Navbar from "../components/Navbar";
           </a>
 
           <a
+            href="https://discord.gg/wraa3dGTjr"
+            target="_blank"
+            rel="noreferrer"
+            class="transition hover:text-white"
+          >
+            Discord
+          </a>
+
+
+          <a
             href={`${import.meta.env.BASE_URL}#faq`}
             class="transition hover:text-white"
           >
             FAQ
+          </a>
+
+          <a
+            href={`${import.meta.env.BASE_URL}#soutien`}
+            class="transition hover:text-white"
+          >
+            Soutenir le projet
           </a>
         </nav>
       </div>
